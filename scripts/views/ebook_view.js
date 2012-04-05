@@ -289,7 +289,12 @@ Readium.Views.ReflowablePaginationView = Readium.Views.PaginationViewBase.extend
 		this.model.changPageNumber(num);
 		this.$('#readium-content-container').
 			css('visibility', 'visible');
-		
+
+		// css-regions polyfill
+		if (!Modernizr.cssregions) {
+			$("#readium-content-container").regions(".page");
+		}
+
 		// dunno that I should be calling this explicitly
 		this.changePage();
 	},
