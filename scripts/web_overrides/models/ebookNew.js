@@ -297,7 +297,7 @@ Readium.Models.AppleFixedEbook = Readium.Models.EbookBase.extend({
 	},
 
 	CreatePaginator: function() {
-		return new Readium.Views.FixedPaginationView({model: this});	
+		return new Readium.Views.FixedPaginationViewMobile({model: this});
 	},
 
 	buildSectionJSON: function(manifest_item) {
