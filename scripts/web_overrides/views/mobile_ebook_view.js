@@ -15,7 +15,15 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		var that = this;
 		var elWidth = this.el.offsetWidth;
 		var elHeight = this.el.offsetHeight;
-		var ratio = this.model.get('meta_width') / this.model.get('meta_height');
+		var metaWidth = this.model.get('meta_width');
+		var metaHeight = this.model.get('meta_height');
+		var two_up = this.model.get("two_up");
+
+		if (two_up) {
+			var ratio = metaWidth * 2 / metaHeight;
+		} else {
+			var ratio = metaWidth / metaHeight;
+		}
 		var pageRatio = elWidth / elHeight;
 
 		if (pageRatio > ratio) {
@@ -100,7 +108,7 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 	changePage: function() {
 		var that = this;
 		var currentPage = this.model.get("current_page");
-		var two_up = this.model.get("two_up")
+		var two_up = this.model.get("two_up");
 		this.$(".fixed-page-wrap").each(function(index) {
 			$(this).toggle(that.isPageVisible(index + 1, currentPage));
 		});
