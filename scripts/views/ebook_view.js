@@ -258,23 +258,33 @@ Readium.Views.ReflowablePaginationView = Readium.Views.PaginationViewBase.extend
 		this.replaceContent( dom.body.innerHTML );
 		// need to add one page for calculation to work (TODO: this can be fixed)
 		this.$('#container').html( this.page_template({page_num: 1, empty: false}) );
-		
-		// we need to let the stylesheets be parsed (TODO use an event?)
+
 		var that = this;
-		MathJax.Hub.Queue(
-            ["Delay",MathJax.Callback,8], // delay to let CSS parse
-            ["Typeset",MathJax.Hub],      // typeset any mathematics
-        	function() {
-				that.renderPages();
-				that.toggleTwoUp();
-				if(that.renderToLastPage) {
-					that.model.goToLastPage();
-				}
-				else {
-					that.model.goToFirstPage();
-				}
-        	}
-		);
+
+		// used to workaround without MathJax
+		var finishRendering = function() {
+			that.renderPages();
+			that.toggleTwoUp();
+			if(that.renderToLastPage) {
+				that.model.goToLastPage();
+			}
+			else {
+				that.model.goToFirstPage();
+			}
+		}
+
+		// only execute MathJax, if it is definded
+		if (typeof MathJax != 'undefined') {
+			MathJax.Hub.Queue(
+					// we need to let the stylesheets be parsed (TODO use an event?)
+					["Delay",MathJax.Callback,8], // delay to let CSS parse
+					["Typeset",MathJax.Hub],      // typeset any mathematics
+					finishRendering
+			);
+		} else {
+			finishRendering()
+		}
+
 		
 		return this;
 	},
