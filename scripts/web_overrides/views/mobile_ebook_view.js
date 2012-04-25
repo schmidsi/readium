@@ -48,6 +48,14 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		}
 	},
 
+	injectHelperJS: function(iframe) {
+		var doc = iframe.contentDocument;
+		var script = doc.createElement("script");
+		script.type = "text/javascript";
+		script.src = "/static/lib/readium/scripts/web_overrides/iframe_inject.js";
+		doc.getElementsByTagName("head")[0].appendChild(script);
+	},
+
 	render: function() {
 		// add all the pages
 		var that = this;
@@ -70,6 +78,7 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		this.$('.content-sandbox').on("load", function(e) {
 			// not sure why, on("load", this.applyBindings, this) was not working
 			that.applyBindings( $(e.srcElement).contents() );
+			that.injectHelperJS(this);
 			that.applyScale(this, that.scale);
 		});
 
