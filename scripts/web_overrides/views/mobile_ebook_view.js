@@ -13,32 +13,24 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 
 	centerPage: function() {
 		var that = this;
-		var elWidth = this.el.offsetWidth;
-		var elHeight = this.el.offsetHeight;
-		var metaWidth = this.model.get('meta_width');
-		var metaHeight = this.model.get('meta_height');
-		var two_up = this.model.get("two_up");
 
-		if (two_up) {
-			var ratio = metaWidth * 2 / metaHeight;
-		} else {
-			var ratio = metaWidth / metaHeight;
-		}
-		var pageRatio = elWidth / elHeight;
+		var twoUpMultiplicator = this.model.get("two_up") ? 2 : 1;
+		var pageRatio = (this.el.offsetWidth / twoUpMultiplicator) / this.el.offsetHeight;
+		var ratio = this.model.get('meta_width') / this.model.get('meta_height');
+		var preserveRatioWidth = $('#page-wrap').height() * ratio;
+		var preserveRatioHeight = $('#page-wrap').width() / ratio;
 
 		if (pageRatio > ratio) {
-			var preserveRatioWidth = $('#page-wrap').height() * ratio;
-			$('#page-wrap').width(preserveRatioWidth)
-				.css('left', (elWidth - preserveRatioWidth) / 2)
+			$('#page-wrap').width(preserveRatioWidth * twoUpMultiplicator)
+				.css('left', (this.el.offsetWidth - preserveRatioWidth * twoUpMultiplicator) / 2)
 				.css('top', 0).css('height', '100%');
 		} else {
-			var preserveRatioHeight = $('#page-wrap').width() / ratio;
-			$('#page-wrap').height(preserveRatioHeight)
-				.css('top', (elHeight - preserveRatioHeight) / 2)
+			$('#page-wrap').height(preserveRatioHeight / twoUpMultiplicator)
+				.css('top', (this.el.offsetHeight - preserveRatioHeight / twoUpMultiplicator) / 2)
 				.css('left', 0).css('width', '100%');
 		}
 
-		var scale = this.scale = $('#page-wrap').width() / this.model.get('meta_width');
+		var scale = this.scale = preserveRatioWidth / this.model.get('meta_width');;
 
 		$('.fixed-page-wrap iframe').each(function(i){
 			that.applyScale(this, scale);
@@ -57,7 +49,6 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		$('body').addClass('apple-fixed-layout');
 		this.setUpMode();
 
-		this.centerPage();
 		$(window).on('resize', function(){
 			that.centerPage(that);
 		});
@@ -95,6 +86,7 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		} else {
 			$('#page-0').remove();
 		}
+		this.centerPage();
 	},
 
 	renderPages: function() {
