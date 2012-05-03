@@ -32,11 +32,30 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 				.css('left', 0).css('width', '100%');
 		}
 
+		var oldScale = this.scale;
 		var scale = this.scale = preserveRatioWidth / metaWidth;
+
+		if (oldScale < scale) this.fixScaleUp();
 
 		$('.fixed-page-wrap iframe').each(function(i){
 			that.applyScale(this, scale);
 		});
+	},
+
+	fixScaleUp: function() {
+		/* stupid workaround according to: http://stackoverflow.com/questions/3485365/how-can-i-force-webkit-to-redraw-repaint-to-propagate-style-changes
+			on ipad orientationChange from portrait to landscape and also on chrome if we make
+			the browser window bigger, for some reasons (bug in webkit?) the scaling does not work fine.
+		*/
+		$('#log').prepend('scaleUpFix <br/>')
+
+		this.scaleUpFixTimeout = window.setTimeout(function(){
+			$('.fixed-page-wrap:visible iframe').each(function(i){
+				this.contentDocument.body.style.display='none';
+				this.contentDocument.body.offsetHeight;
+				this.contentDocument.body.style.display='block';
+			});
+		}, 100);
 	},
 
 	applyScale: function(iframe, scale) {
@@ -66,6 +85,8 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		$(window).on('resize', function(){
 			that.centerPage(that);
 		});
+
+		$(window).on('orientationchange', this.fixScaleUp);
 
 		//this.$el.width(this.model.get("meta_width") * 2);
 		//this.$el.height(this.model.get("meta_height"));
