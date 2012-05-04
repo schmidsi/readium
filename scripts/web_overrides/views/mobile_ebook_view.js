@@ -2,6 +2,8 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 	/* Specialized View for displaying fixed-page EPUBs on mobile devices */
 	scale : 1,
 
+	viewType : 'center',
+
 	initialize: function() {
 		// call the super ctor
 		this.page_template = _.template( $('#fixed-page-template-mobile').html() );
@@ -17,12 +19,12 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		var twoUpMultiplicator = this.model.get("two_up") ? 2 : 1;
 		var metaWidth = this.model.get('meta_width') || this.model.get('content_width');
 		var metaHeight = this.model.get('meta_height') || this.model.get('content_height');
-		var pageRatio = (this.el.offsetWidth / twoUpMultiplicator) / this.el.offsetHeight;
+		var elRatio = (this.el.offsetWidth / twoUpMultiplicator) / this.el.offsetHeight;
 		var ratio = metaWidth / metaHeight;
-		var preserveRatioWidth = $('#page-wrap').height() * ratio;
-		var preserveRatioHeight = $('#page-wrap').width() / ratio;
+		var preserveRatioWidth = this.el.offsetHeight * ratio;
+		var preserveRatioHeight = this.el.offsetWidth / ratio;
 
-		if (pageRatio > ratio) {
+		if (elRatio > ratio) {
 			$('#page-wrap').width(preserveRatioWidth * twoUpMultiplicator)
 				.css('left', (this.el.offsetWidth - preserveRatioWidth * twoUpMultiplicator) / 2)
 				.css('top', 0).css('height', '100%');
@@ -39,7 +41,9 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 			that.applyScale(this, scale);
 		});
 
-		if (oldScale < scale) this.fixScaleUp(100);
+		if (oldScale < scale) this.fixScaleUp(301);
+
+		this.viewType = 'center';
 	},
 
 	/**
@@ -67,7 +71,9 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 			//console.log(this, scale, this.contentDocument.body.style);
 		});
 
-		this.fixScaleUp();
+		this.fixScaleUp(301);
+
+		this.viewType = 'zoom';
 	},
 
 	/**
@@ -110,7 +116,7 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		this.setUpMode();
 
 		$(window).on('resize', function(){
-			that.centerPage(that);
+			that.applyViewType();
 		});
 
 		$(window).on('orientationchange', this.fixScaleUp);
@@ -149,7 +155,25 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		} else {
 			$('#page-0').remove();
 		}
-		this.centerPage();
+		this.applyViewType();
+	},
+
+	applyViewType: function(viewType) {
+		var viewType = viewType || this.viewType;
+
+		if (viewType === 'center') {
+			this.centerPage();
+		} else if (viewType === 'zoom') {
+			this.zoomPage();
+		}
+	},
+
+	toggleViewType: function() {
+		if (this.viewType === 'center') {
+			this.zoomPage();
+		} else if (this.viewType === 'zoom') {
+			this.centerPage();
+		}
 	},
 
 	renderPages: function() {
