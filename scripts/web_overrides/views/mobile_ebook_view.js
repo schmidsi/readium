@@ -35,27 +35,54 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		var oldScale = this.scale;
 		var scale = this.scale = preserveRatioWidth / metaWidth;
 
-		if (oldScale < scale) this.fixScaleUp();
-
 		$('.fixed-page-wrap iframe').each(function(i){
 			that.applyScale(this, scale);
 		});
+
+		if (oldScale < scale) this.fixScaleUp(100);
 	},
 
-	fixScaleUp: function() {
-		/* stupid workaround according to: http://stackoverflow.com/questions/3485365/how-can-i-force-webkit-to-redraw-repaint-to-propagate-style-changes
-			on ipad orientationChange from portrait to landscape and also on chrome if we make
-			the browser window bigger, for some reasons (bug in webkit?) the scaling does not work fine.
-		*/
-		$('#log').prepend('scaleUpFix <br/>')
+	/**
+	 * zooms the page view, so that a single page is showed in the biggest possible size;
+	 * nearly 100% of the containing container (el).
+	 * @param even zoom to the odd or even page
+	 */
+	zoomPage: function(even) {
+		var that = this;
 
+		var twoUpMultiplicator = this.model.get("two_up") ? 2 : 1;
+		var pageWrapRatio = $('#page-wrap').width() / $('#page-wrap').height();
+		var zoomedWidth = this.$el.width() * twoUpMultiplicator;
+		var metaWidth = this.model.get('meta_width') || this.model.get('content_width');
+		var scale = this.scale = this.$el.width() / metaWidth;
+
+		$('#page-wrap')
+			.width(zoomedWidth)
+			.height(zoomedWidth / pageWrapRatio)
+			.css('left', even ? 0 : -zoomedWidth / 2)
+			.css('top', 0);
+
+		$('.fixed-page-wrap iframe').each(function(i){
+			that.applyScale(this, scale);
+			//console.log(this, scale, this.contentDocument.body.style);
+		});
+
+		this.fixScaleUp();
+	},
+
+	/**
+	 * stupid workaround according to: http://stackoverflow.com/questions/3485365/how-can-i-force-webkit-to-redraw-repaint-to-propagate-style-changes
+	 * on ipad orientationChange from portrait to landscape and also on chrome if we make
+	 * the browser window bigger, for some reasons (bug in webkit?) the scaling does not work fine.
+	 */
+	fixScaleUp: function(timeout) {
 		this.scaleUpFixTimeout = window.setTimeout(function(){
 			$('.fixed-page-wrap:visible iframe').each(function(i){
 				this.contentDocument.body.style.display='none';
 				this.contentDocument.body.offsetHeight;
 				this.contentDocument.body.style.display='block';
 			});
-		}, 100);
+		}, timeout || 0);
 	},
 
 	applyScale: function(iframe, scale) {
