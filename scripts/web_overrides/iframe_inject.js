@@ -1,5 +1,5 @@
 function passAndPrevent(event) {
-	parent.document.dispatchEvent(event);
+	var e = parent.document.querySelector('iframe[src="' + document.location.pathname + '"]').parentNode.dispatchEvent(event);
 	event.preventDefault();
 }
 

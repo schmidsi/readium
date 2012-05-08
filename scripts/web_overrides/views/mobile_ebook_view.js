@@ -11,6 +11,26 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		Readium.Views.PaginationViewBase.prototype.initialize.call(this);
 		this.model.on("first_render_ready", this.render, this);
 		this.model.on("change:two_up", this.setUpMode, this);
+		this.bindHammer();
+	},
+
+	bindHammer : function() {
+		var that = this;
+		var startTimestamp;
+
+		this.$el
+			.hammer()
+			.on('dragstart', function(e) {
+				startTimestamp = e.timeStamp
+			})
+			.on('dragend', function(e) {
+				var delta = e.timeStamp - startTimestamp;
+
+				if (delta < 300) {
+					if (e.direction === 'left') that.model.nextPage();
+					if (e.direction === 'right') that.model.prevPage();
+				}
+			});
 	},
 
 	centerPage: function() {
@@ -104,7 +124,7 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		var doc = iframe.contentDocument;
 		var script = doc.createElement("script");
 		script.type = "text/javascript";
-		script.src = "/static/lib/readium/scripts/web_overrides/iframe_inject.js";
+		script.src = "/static/lib/readium/scripts/web_overrides/iframe_inject.js?v=1";
 		doc.getElementsByTagName("head")[0].appendChild(script);
 	},
 
