@@ -17,11 +17,19 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 	bindHammer : function() {
 		var that = this;
 		var startTimestamp;
+		var startOffset;
 
 		this.$el
 			.hammer()
+			.on('tap doubletap', function(e){
+				// maybe a bug of hammer, but we stop these events here, becuase
+				// they are triggered twice on the #layer1 el
+				e.preventDefault();
+				e.stopPropagation();
+			})
 			.on('dragstart', function(e) {
-				startTimestamp = e.timeStamp
+				startTimestamp = e.timeStamp;
+				startOffset = that.$('#page-wrap').offset();
 			})
 			.on('dragend', function(e) {
 				var delta = e.timeStamp - startTimestamp;
@@ -30,6 +38,12 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 					if (e.direction === 'left') that.model.nextPage();
 					if (e.direction === 'right') that.model.prevPage();
 				}
+			})
+			.on('drag', function(e){
+				that.$('#page-wrap').css({
+					'top' : startOffset.top + e.distanceY,
+					'left' : startOffset.left + e.distanceX
+				})
 			});
 	},
 
@@ -88,7 +102,6 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 
 		$('.fixed-page-wrap iframe').each(function(i){
 			that.applyScale(this, scale);
-			//console.log(this, scale, this.contentDocument.body.style);
 		});
 
 		this.fixScaleUp(301);
@@ -96,6 +109,21 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		this.viewType = 'zoom';
 	},
 
+	/**
+	 * Scrolls the pages
+	 * @param x amount in vertical direction
+	 * @param y amount in horizontal direction
+	 */
+	scroll: function(x, y) {
+		var x = x || 0,
+				y = y || 0,
+				offset = this.$('#page-wrap').offset();
+
+		this.$('#page-wrap').css({
+			'top' : offset.top + x,
+			'left' : offset.left + y
+		});
+	},
 	/**
 	 * stupid workaround according to: http://stackoverflow.com/questions/3485365/how-can-i-force-webkit-to-redraw-repaint-to-propagate-style-changes
 	 * on ipad orientationChange from portrait to landscape and also on chrome if we make
@@ -132,11 +160,22 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		// add all the pages
 		var that = this;
 		var sections = this.model.getAllSections();
+		var windowHeight = $(window).height();
+		var windowWidth = $(window).width();
+
 		$('body').addClass('apple-fixed-layout');
 		this.setUpMode();
 
-		$(window).on('resize', function(){
-			that.applyViewType();
+		$(window).on('resize', function(e){
+			var $this = $(this);
+
+			// fix for ipad/iphone bug: http://stackoverflow.com/questions/8898412/iphone-ipad-triggering-unexpected-resize-events
+			if ( $this.height() != windowHeight || $this.width() != windowWidth) {
+				windowWidth = $this.width();
+				windowHeight = $this.height();
+
+				that.applyViewType();
+			}
 		});
 
 		$(window).on('orientationchange', this.fixScaleUp);
