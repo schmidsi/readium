@@ -18,6 +18,7 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		var that = this;
 		var startTimestamp;
 		var startOffset;
+		var startDimensions;
 
 		this.$el
 			.hammer()
@@ -27,23 +28,78 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 				e.preventDefault();
 				e.stopPropagation();
 			})
+			/**
+			 * Save timestamp to detect swipe (drag duration < 300ms)
+			 * Save offset to append offset later as scrolling
+			 */
 			.on('dragstart', function(e) {
 				startTimestamp = e.timeStamp;
 				startOffset = that.$('#page-wrap').offset();
 			})
+		/**
+		 * check if we have a swipe. if yes, change page accordingly
+		 * also, undo scrolling
+		 */
 			.on('dragend', function(e) {
 				var delta = e.timeStamp - startTimestamp;
 
 				if (delta < 300) {
 					if (e.direction === 'left') that.model.nextPage();
 					if (e.direction === 'right') that.model.prevPage();
+
+					if (e.direction === 'right' || e.direction === 'left') {
+						that.$('#page-wrap').css({
+							'top' : startOffset.top,
+							'left' : startOffset.left
+						})
+					}
 				}
 			})
-			.on('drag', function(e){
+		/**
+		 * scroll the book according to the drag
+		 */
+			.on('drag', function(e) {
 				that.$('#page-wrap').css({
 					'top' : startOffset.top + e.distanceY,
 					'left' : startOffset.left + e.distanceX
 				})
+			})
+		/**
+		 * save the dimensions of #page-wrap for scaling
+		 */
+			.on('transformstart', function(e) {
+				var pageWrap = that.$('#page-wrap');
+
+				startDimensions = {
+					height: pageWrap.height(),
+					width: pageWrap.width(),
+					left: pageWrap.offset().left,
+					top: pageWrap.offset().top
+				}
+			})
+		/**
+		 * only scaling. it scales the #page-wrap and cares for the content
+		 */
+			.on('transform', function(e) {
+				var twoUpMultiplicator = that.model.get("two_up") ? 2 : 1;
+				var metaWidth = that.model.get('meta_width') || that.model.get('content_width');
+				var scaleCenterOffsetLeft = e.position.x - startDimensions.left;
+				var scaleCenterOffsetTop = e.position.y - startDimensions.top;
+
+				$('#page-wrap').css({
+					height : startDimensions.height * e.scale,
+					width: startDimensions.width * e.scale,
+					left: startDimensions.left - (e.scale * scaleCenterOffsetLeft) + scaleCenterOffsetLeft,
+					top: startDimensions.top - (e.scale * scaleCenterOffsetTop) + scaleCenterOffsetTop
+				});
+
+				that.scale = ((startDimensions.width * e.scale) / twoUpMultiplicator) / metaWidth;
+
+				$('.fixed-page-wrap iframe').each(function(i){
+					that.applyScale(this, that.scale);
+				});
+
+				that.fixScaleUp(10);
 			});
 	},
 
