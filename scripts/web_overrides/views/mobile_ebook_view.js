@@ -113,6 +113,7 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		var ratio = metaWidth / metaHeight;
 		var preserveRatioWidth = this.el.offsetHeight * ratio;
 		var preserveRatioHeight = this.el.offsetWidth / ratio;
+		var oldScale = this.scale;
 
 		if (elRatio > ratio) {
 			$('#page-wrap').width(preserveRatioWidth * twoUpMultiplicator)
@@ -124,8 +125,7 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 				.css('left', 0).css('width', '100%');
 		}
 
-		var oldScale = this.scale;
-		var scale = this.scale = preserveRatioWidth / metaWidth;
+		var scale = this.scale = $('#page-wrap').width() / twoUpMultiplicator / metaWidth;
 
 		$('.fixed-page-wrap iframe').each(function(i){
 			that.applyScale(this, scale);
@@ -208,7 +208,7 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		var doc = iframe.contentDocument;
 		var script = doc.createElement("script");
 		script.type = "text/javascript";
-		script.src = "/static/lib/readium/scripts/web_overrides/iframe_inject.js?v=1";
+		script.src = "/lib/readium/scripts/web_overrides/iframe_inject.js";
 		doc.getElementsByTagName("head")[0].appendChild(script);
 	},
 
