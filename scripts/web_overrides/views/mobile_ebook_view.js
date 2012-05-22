@@ -1,14 +1,24 @@
+/**
+ * Specialized View for displaying fixed-page EPUBs on mobile devices
+ * @param {object} options:
+ * 		prerender: specify how many pages should be prerendered. default: 1
+ */
 Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.extend({
-	/* Specialized View for displaying fixed-page EPUBs on mobile devices */
+
+	options : {
+		prerender : 2
+	},
+
 	scale : 1,
 
 	viewType : 'center',
 
+	renderedPages : [],
+
 	initialize: function() {
-		// call the super ctor
+		Readium.Views.PaginationViewBase.prototype.initialize.call(this);
 		this.page_template = _.template( $('#fixed-page-template-mobile').html() );
 		this.empty_template = _.template( $('#empty-fixed-page-template').html() );
-		Readium.Views.PaginationViewBase.prototype.initialize.call(this);
 		this.model.on("first_render_ready", this.render, this);
 		this.model.on("change:two_up", this.setUpMode, this);
 		this.bindHammer();
@@ -215,9 +225,10 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 	render: function() {
 		// add all the pages
 		var that = this;
-		var sections = this.model.getAllSections();
 		var windowHeight = $(window).height();
 		var windowWidth = $(window).width();
+
+		this.sections = this.model.getAllSections();
 
 		$('body').addClass('apple-fixed-layout');
 		this.setUpMode();
@@ -236,12 +247,8 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 
 		$(window).on('orientationchange', this.fixScaleUp);
 
-		//this.$el.width(this.model.get("meta_width") * 2);
-		//this.$el.height(this.model.get("meta_height"));
-
-		for(var i = 0; i < sections.length; i++) {
-			sections[i].page_num = i + 1;
-			this.$('#container').append(this.page_template(sections[i]));
+		for(var i = 0; i < this.sections.length; i++) {
+			this.sections[i].page_num = i + 1;
 		}
 
 		this.$('.content-sandbox').on("load", function(e) {
@@ -251,11 +258,8 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 			that.applyScale(this, that.scale);
 		});
 
-		this.model.changPageNumber(i);
-		setTimeout(function() {
-			//$('#page-wrap').zoomAndScale(); //<= this was a little buggy last I checked but it is a super cool feature
-		}, 10)
-		return this.renderPages();
+		this.model.changPageNumber(this.sections.length);
+		return this;
 	},
 
 	setUpMode: function() {
@@ -291,18 +295,34 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		}
 	},
 
-	renderPages: function() {
+	/**
+	 * renders a given page, if it is not already rendered
+	 * @param pageNumber
+	 */
+	renderPage: function(pageNumber) {
+		if (1 > pageNumber || pageNumber > this.sections.length) return
 
-		// lost myself in the complexity here but this seems right
-		this.changePage();
-		this.model.goToFirstPage();
-		return this;
+		if (this.renderedPages.indexOf(pageNumber) === -1) {
+			var renderedPage = this.page_template(this.sections[pageNumber -1])
+			this.$('#container').append(renderedPage);
+			this.renderedPages.push(pageNumber);
+		}
 	},
 
 	changePage: function() {
+
 		var that = this;
 		var currentPage = this.model.get("current_page");
 		var two_up = this.model.get("two_up");
+
+		var renderStart = _.first(currentPage) - this.options.prerender;
+		var renderStop = _.last(currentPage) + this.options.prerender;
+
+		console.log('changePage', renderStart, renderStop);
+		for (var p = renderStart; p <= renderStop; p++) {
+			this.renderPage(p);
+		}
+
 		this.$(".fixed-page-wrap").each(function(index) {
 			$(this).toggle(that.isPageVisible(index + 1, currentPage));
 		});
