@@ -16,8 +16,8 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 
 	bindHammer : function() {
 		var that = this;
-		var startTimestamp;
 		var startOffset;
+		var startTimestamp;
 		var startDimensions;
 
 		this.$el
@@ -40,29 +40,28 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		 * check if we have a swipe. if yes, change page accordingly
 		 * also, undo scrolling
 		 */
-			.on('dragend', function(e) {
-				var delta = e.timeStamp - startTimestamp;
+			.on('swipe', function(e) {
+				if (e.direction === 'left') that.model.nextPage();
+				if (e.direction === 'right') that.model.prevPage();
 
-				if (delta < 300) {
-					if (e.direction === 'left') that.model.nextPage();
-					if (e.direction === 'right') that.model.prevPage();
-
-					if (e.direction === 'right' || e.direction === 'left') {
-						that.$('#page-wrap').css({
-							'top' : startOffset.top,
-							'left' : startOffset.left
-						})
-					}
+				if (e.direction === 'right' || e.direction === 'left') {
+					that.$('#page-wrap').css({
+						'top' : startOffset.top,
+						'left' : startOffset.left
+					})
 				}
 			})
 		/**
 		 * scroll the book according to the drag
+		 * only after 200ms to avoid dragin while swipe
 		 */
 			.on('drag', function(e) {
-				that.$('#page-wrap').css({
-					'top' : startOffset.top + e.distanceY,
-					'left' : startOffset.left + e.distanceX
-				})
+				if (e.timeStamp - 200 > startTimestamp) {
+					that.$('#page-wrap').css({
+						'top' : startOffset.top + e.distanceY,
+						'left' : startOffset.left + e.distanceX
+					})
+				}
 			})
 		/**
 		 * save the dimensions of #page-wrap for scaling
@@ -303,6 +302,7 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		var that = this;
 		var currentPage = this.model.get("current_page");
 		var two_up = this.model.get("two_up");
+
 		this.$(".fixed-page-wrap").each(function(index) {
 			$(this).toggle(that.isPageVisible(index + 1, currentPage));
 		});
