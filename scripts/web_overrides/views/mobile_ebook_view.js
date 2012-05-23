@@ -171,10 +171,18 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		// stoppers
 		if (params.width < this.centerRect.width) return
 		if (params.height < this.centerRect.height) return
-		if (params.left + $pageWrap.width() < this.centerRect.width + this.centerRect.left) return
+		if (params.left + $pageWrap.width() < this.centerRect.width + this.centerRect.left) {
+			var overscroll = (this.centerRect.width + this.centerRect.left) - (params.left + $pageWrap.width())
+			$('#overscroll-right').width( overscroll )
+			return
+		};
+		if (params.left > this.centerRect.left) {
+			var overscroll = params.left - this.centerRect.left;
+			$('#overscroll-left').width( overscroll );
+			return
+		};
 		if (params.top + $pageWrap.height() < this.centerRect.height + this.centerRect.top) return
 		if (params.top > this.centerRect.top) return
-		if (params.left > this.centerRect.left) return
 
 		if (params.left) $pageWrap.css('left', params.left);
 		if (params.top) $pageWrap.css('top', params.top);
