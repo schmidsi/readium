@@ -15,6 +15,10 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 
 	renderedPages : [],
 
+	// computed rect, which is centered in the view with preserved proportions,
+	// depending on two_up and page aspect ratio
+	centerRect: {},
+
 	initialize: function() {
 		Readium.Views.PaginationViewBase.prototype.initialize.call(this);
 		this.page_template = _.template( $('#fixed-page-template-mobile').html() );
@@ -58,7 +62,10 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 					that.$('#page-wrap').css({
 						'top' : startOffset.top,
 						'left' : startOffset.left
-					})
+					});
+
+					e.preventDefault();
+					e.stopPropagation();
 				}
 			})
 		/**
@@ -66,12 +73,16 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		 * only after 200ms to avoid dragin while swipe
 		 */
 			.on('drag', function(e) {
-				if (e.timeStamp - 200 > startTimestamp) {
-					that.$('#page-wrap').css({
+				//if (e.timeStamp - 200 > startTimestamp) {
+					that.transform({
 						'top' : startOffset.top + e.distanceY,
 						'left' : startOffset.left + e.distanceX
 					})
-				}
+				//}
+			})
+			.on('dragend', function(e) {
+				e.preventDefault();
+				e.stopPropagation();
 			})
 		/**
 		 * save the dimensions of #page-wrap for scaling
@@ -112,9 +123,7 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 			});
 	},
 
-	centerPage: function() {
-		var that = this;
-
+	updateCenterRect: function() {
 		var twoUpMultiplicator = this.model.get("two_up") ? 2 : 1;
 		var metaWidth = this.model.get('meta_width') || this.model.get('content_width');
 		var metaHeight = this.model.get('meta_height') || this.model.get('content_height');
@@ -122,18 +131,64 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		var ratio = metaWidth / metaHeight;
 		var preserveRatioWidth = this.el.offsetHeight * ratio;
 		var preserveRatioHeight = this.el.offsetWidth / ratio;
-		var oldScale = this.scale;
 
 		if (elRatio > ratio) {
-			$('#page-wrap').width(preserveRatioWidth * twoUpMultiplicator)
-				.css('left', (this.el.offsetWidth - preserveRatioWidth * twoUpMultiplicator) / 2)
-				.css('top', 0).css('height', '100%');
+			this.centerRect = {
+				top: 0,
+				left: (this.el.offsetWidth - preserveRatioWidth * twoUpMultiplicator) / 2,
+				height: this.el.offsetHeight,
+				width: preserveRatioWidth * twoUpMultiplicator
+			}
 		} else {
-			$('#page-wrap').height(preserveRatioHeight / twoUpMultiplicator)
-				.css('top', (this.el.offsetHeight - preserveRatioHeight / twoUpMultiplicator) / 2)
-				.css('left', 0).css('width', '100%');
+			this.centerRect = {
+				top: (this.el.offsetHeight - preserveRatioHeight / twoUpMultiplicator) / 2,
+				left: 0,
+				height: preserveRatioHeight / twoUpMultiplicator,
+				width: this.el.offsetWidth
+			}
 		}
 
+		return this.centerRect
+	},
+
+	/**
+	 * currently unused. should replace onTransform, onDrag, centerPage and zoomPage
+	 * @param params
+	 */
+	transform: function(params) {
+		var $pageWrap = this.$('#page-wrap');
+
+		var defaults = {
+			height: 0, //this.$el.width(),
+			width: 0, //this.$el.height(),
+			top: 0,
+			left: 0,
+			scale: 1,
+			scaleCenterLeft: 0,
+			scaleCenterTop: 0
+		}
+
+		// stoppers
+		if (params.width < this.centerRect.width) return
+		if (params.height < this.centerRect.height) return
+		if (params.left + $pageWrap.width() < this.centerRect.width + this.centerRect.left) return
+		if (params.top + $pageWrap.height() < this.centerRect.height + this.centerRect.top) return
+		if (params.top > this.centerRect.top) return
+		if (params.left > this.centerRect.left) return
+
+		if (params.left) $pageWrap.css('left', params.left);
+		if (params.top) $pageWrap.css('top', params.top);
+	},
+
+	centerPage: function() {
+		var that = this;
+
+		var twoUpMultiplicator = this.model.get("two_up") ? 2 : 1;
+		var metaWidth = this.model.get('meta_width') || this.model.get('content_width');
+
+		$('#page-wrap').css(this.centerRect);
+
+		var oldScale = this.scale;
 		var scale = this.scale = $('#page-wrap').width() / twoUpMultiplicator / metaWidth;
 
 		$('.fixed-page-wrap iframe').each(function(i){
@@ -230,10 +285,13 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		this.sections = this.model.getAllSections();
 
 		$('body').addClass('apple-fixed-layout');
+		this.updateCenterRect();
 		this.setUpMode();
 
 		$(window).on('resize', function(e){
 			var $this = $(this);
+
+			that.updateCenterRect();
 
 			// fix for ipad/iphone bug: http://stackoverflow.com/questions/8898412/iphone-ipad-triggering-unexpected-resize-events
 			if ( $this.height() != windowHeight || $this.width() != windowWidth) {
