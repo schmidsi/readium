@@ -250,13 +250,6 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 			this.sections[i].page_num = i + 1;
 		}
 
-		this.$('.content-sandbox').on("load", function(e) {
-			// not sure why, on("load", this.applyBindings, this) was not working
-			that.applyBindings( $(e.srcElement).contents() );
-			that.injectHelperJS(this);
-			that.applyScale(this, that.scale);
-		});
-
 		this.model.changPageNumber(this.sections.length);
 		return this;
 	},
@@ -301,9 +294,18 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 	renderPage: function(pageNumber) {
 		if (1 > pageNumber || pageNumber > this.sections.length) return
 
+		var that = this;
+
 		if (this.renderedPages.indexOf(pageNumber) === -1) {
-			var renderedPage = this.page_template(this.sections[pageNumber -1])
-			this.$('#container').append(renderedPage);
+			var renderedPage = this.page_template( this.sections[pageNumber -1] );
+			var $page = $(renderedPage).appendTo( this.$('#container') );
+
+			$('.content-sandbox', $page).on("load", function(e) {
+				that.applyBindings( $(e.srcElement).contents() );
+				that.injectHelperJS(this);
+				that.applyScale(this, that.scale);
+			});
+
 			this.renderedPages.push(pageNumber);
 		}
 	},
