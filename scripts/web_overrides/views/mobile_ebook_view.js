@@ -13,7 +13,7 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 
 	viewType : 'center',
 
-	renderedPages : [],
+	renderedPages : {},
 
 	// computed rect, which is centered in the view with preserved proportions,
 	// depending on two_up and page aspect ratio
@@ -157,6 +157,7 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 	 */
 	transform: function(params) {
 		var $pageWrap = this.$('#page-wrap');
+		var twoUpMultiplicator = this.model.get("two_up") ? 2 : 1;
 
 		var defaults = {
 			height: 0, //this.$el.width(),
@@ -173,7 +174,16 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		if (params.height < this.centerRect.height) return
 		if (params.left + $pageWrap.width() < this.centerRect.width + this.centerRect.left) {
 			var overscroll = (this.centerRect.width + this.centerRect.left) - (params.left + $pageWrap.width())
-			$('#overscroll-right').width( overscroll )
+			$('#overscroll-right').width( overscroll );
+
+			this.$('.fixed-page-wrap.odd:visible').not('.covered').css({
+				marginLeft : - overscroll / 2,
+				width : this.centerRect.width / twoUpMultiplicator - overscroll / 2
+			}).find('.content-sandbox').css({
+				width: this.centerRect.width / twoUpMultiplicator,
+				left: - overscroll / 2
+			});
+
 			return
 		};
 		if (params.left > this.centerRect.left) {
@@ -362,9 +372,10 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 
 		var that = this;
 
-		if (this.renderedPages.indexOf(pageNumber) === -1) {
+		if (!_.has(this.renderedPages, pageNumber)) {
 			var renderedPage = this.page_template( this.sections[pageNumber -1] );
 			var $page = $(renderedPage).appendTo( this.$('#container') );
+			$page.css('zIndex', this.sections.length - pageNumber);
 
 			$('.content-sandbox', $page).on("load", function(e) {
 				that.applyBindings( $(e.srcElement).contents() );
@@ -372,26 +383,35 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 				that.applyScale(this, that.scale);
 			});
 
-			this.renderedPages.push(pageNumber);
+			this.renderedPages[pageNumber] = $page;
 		}
 	},
 
 	changePage: function() {
-
 		var that = this;
 		var currentPage = this.model.get("current_page");
-		var two_up = this.model.get("two_up");
+		var twoUpMultiplicator = this.model.get("two_up") ? 2 : 1;
 
-		var renderStart = _.first(currentPage) - this.options.prerender;
-		var renderStop = _.last(currentPage) + this.options.prerender;
+		var renderPages = _.range(_.first(currentPage) - this.options.prerender,
+															_.last(currentPage) + this.options.prerender + 1);
+		var nextPages = _.range(_.last(currentPage) + 1, _.last(currentPage) + twoUpMultiplicator + 1 );
+		var prevPages = _.range(_.first(currentPage) - twoUpMultiplicator, _.first(currentPage));
 
-		for (var p = renderStart; p <= renderStop; p++) {
-			this.renderPage(p);
-		}
 
+		// render pages if they are not already rendered
+		for (p in renderPages) this.renderPage(renderPages[p]);
+
+		// only show the actual pages, remove next and previous classes (defaulting)
 		this.$(".fixed-page-wrap").each(function(index) {
-			$(this).toggle(that.isPageVisible(index + 1, currentPage));
+			$(this)
+				.toggleClass('covered', !that.isPageVisible(index + 1, currentPage))
+				.removeClass('next prev');
 		});
+
+		// add .next or .prev to the rendered pages
+		for (p in nextPages) if (this.renderedPages[nextPages[p]]) this.renderedPages[nextPages[p]].addClass('next');
+		for (p in prevPages) if (this.renderedPages[prevPages[p]]) this.renderedPages[prevPages[p]].addClass('prev');
+
 	},
 
 	events: {
