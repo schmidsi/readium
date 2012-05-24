@@ -19,6 +19,9 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 	// depending on two_up and page aspect ratio
 	centerRect: {},
 
+	// computed rect for one page. only depending on aspect ratio
+	pageRect: {},
+
 	initialize: function() {
 		Readium.Views.PaginationViewBase.prototype.initialize.call(this);
 		this.page_template = _.template( $('#fixed-page-template-mobile').html() );
@@ -123,27 +126,30 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 			});
 	},
 
-	updateCenterRect: function() {
+	updateRects: function() {
 		var twoUpMultiplicator = this.model.get("two_up") ? 2 : 1;
 		var metaWidth = this.model.get('meta_width') || this.model.get('content_width');
 		var metaHeight = this.model.get('meta_height') || this.model.get('content_height');
 		var elRatio = (this.el.offsetWidth / twoUpMultiplicator) / this.el.offsetHeight;
 		var ratio = metaWidth / metaHeight;
-		var preserveRatioWidth = this.el.offsetHeight * ratio;
-		var preserveRatioHeight = this.el.offsetWidth / ratio;
+
+		this.pageRect = {
+			height: this.el.offsetWidth / ratio,
+			width: this.el.offsetHeight * ratio
+		}
 
 		if (elRatio > ratio) {
 			this.centerRect = {
 				top: 0,
-				left: (this.el.offsetWidth - preserveRatioWidth * twoUpMultiplicator) / 2,
+				left: (this.el.offsetWidth - this.pageRect.width * twoUpMultiplicator) / 2,
 				height: this.el.offsetHeight,
-				width: preserveRatioWidth * twoUpMultiplicator
+				width: this.pageRect.width * twoUpMultiplicator
 			}
 		} else {
 			this.centerRect = {
-				top: (this.el.offsetHeight - preserveRatioHeight / twoUpMultiplicator) / 2,
+				top: (this.el.offsetHeight - this.pageRect.height / twoUpMultiplicator) / 2,
 				left: 0,
-				height: preserveRatioHeight / twoUpMultiplicator,
+				height: this.pageRect.height / twoUpMultiplicator,
 				width: this.el.offsetWidth
 			}
 		}
@@ -169,20 +175,69 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 			scaleCenterTop: 0
 		}
 
-		// stoppers
+		// prevent underzoom
 		if (params.width < this.centerRect.width) return
 		if (params.height < this.centerRect.height) return
+
+		// catch overscrolling; overscrolling initializes page turn visually
+		// overscroll to right -> nextPage
 		if (params.left + $pageWrap.width() < this.centerRect.width + this.centerRect.left) {
-			var overscroll = (this.centerRect.width + this.centerRect.left) - (params.left + $pageWrap.width())
+			var overscroll = (this.centerRect.width + this.centerRect.left) - (params.left + $pageWrap.width());
 			$('#overscroll-right').width( overscroll );
 
-			this.$('.fixed-page-wrap.odd:visible').not('.covered').css({
-				marginLeft : - overscroll / 2,
-				width : this.centerRect.width / twoUpMultiplicator - overscroll / 2
-			}).find('.content-sandbox').css({
-				width: this.centerRect.width / twoUpMultiplicator,
-				left: - overscroll / 2
-			});
+			// visualize page flip on the current page
+			if (overscroll < this.centerRect.width) {
+
+				this.$('.fixed-page-wrap.odd:visible').not('.covered').css({
+					marginLeft : - overscroll / 2,
+					width : this.centerRect.width / twoUpMultiplicator - overscroll / 2
+				}).find('.content-sandbox').css({
+					width: this.centerRect.width / twoUpMultiplicator,
+					left: - overscroll / 2
+				});
+
+				// show next page
+				if ( overscroll < this.centerRect.width / twoUpMultiplicator ) {
+					// dragging over the right page
+
+					this.$('.fixed-page-wrap.next.odd').addClass('covered').css({
+
+						left: this.centerRect.width - overscroll,
+						width: overscroll
+
+					}).find('.content-sandbox').css({
+
+						width: this.centerRect.width / twoUpMultiplicator,
+						left: - this.centerRect.width + overscroll + this.centerRect.width / twoUpMultiplicator
+
+					});
+
+					// resetting left page
+					this.$('.fixed-page-wrap.next.even').addClass('covered').attr('style', '');
+
+				} else if ( overscroll > this.centerRect.width / twoUpMultiplicator ) {
+					// dragging over the left page
+
+					this.$('.fixed-page-wrap.next.even').addClass('covered').css({
+
+						left: 2 * this.pageRect.width - overscroll,
+						width: overscroll - this.pageRect.width
+
+					}).find('.content-sandbox').css({
+
+						width: this.centerRect.width / twoUpMultiplicator,
+						left: - (2 * this.pageRect.width - overscroll)
+
+					});
+
+					// showing right page
+					this.$('.fixed-page-wrap.next.odd').attr('style', '')
+						.removeClass('covered')
+						.find('.content-sandbox').attr('style', '');
+
+					console.log(overscroll, this.centerRect.width);
+				}
+			}
 
 			return
 		};
@@ -303,13 +358,13 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		this.sections = this.model.getAllSections();
 
 		$('body').addClass('apple-fixed-layout');
-		this.updateCenterRect();
+		this.updateRects();
 		this.setUpMode();
 
 		$(window).on('resize', function(e){
 			var $this = $(this);
 
-			that.updateCenterRect();
+			that.updateRects();
 
 			// fix for ipad/iphone bug: http://stackoverflow.com/questions/8898412/iphone-ipad-triggering-unexpected-resize-events
 			if ( $this.height() != windowHeight || $this.width() != windowWidth) {
