@@ -27,6 +27,9 @@ Readium.Views.FixedPaginationViewMobile = Readium.Views.FixedPaginationView.exte
 		this.page_template = _.template( $('#fixed-page-template-mobile').html() );
 		this.empty_template = _.template( $('#empty-fixed-page-template').html() );
 		this.model.on("first_render_ready", this.render, this);
+
+		// temporary force two up
+		this.model.set('two_up', true);
 		this.model.on("change:two_up", this.setUpMode, this);
 		this.bindHammer();
 	},
